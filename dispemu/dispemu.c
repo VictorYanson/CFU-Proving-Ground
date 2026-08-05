@@ -40,6 +40,12 @@ int main(int argc, char** argv)
     cairo_surface_t *cs;
     cairo_t *c;
 
+    display = XOpenDisplay( NULL );
+    if (!display) {
+        fprintf(stderr, "dispemu: cannot open X display. Is XQuartz running and DISPLAY set?\n");
+        return 1;
+    }
+
     if(argc==2) size = atoi(argv[1]);
     if(size<=0) size = 2;
 

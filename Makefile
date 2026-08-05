@@ -1,13 +1,13 @@
 # CFU Proving Ground since 2025-02    Copyright(c) 2025 Archlab. Science Tokyo
 # Released under the MIT license https://opensource.org/licenses/mit
 
-GCC     := /var/archlab-modules/riscv-gnu-toolchain/2026.03.13/bin/riscv64-unknown-elf-gcc
-GPP     := /var/archlab-modules/riscv-gnu-toolchain/2026.03.13/bin/riscv64-unknown-elf-g++
-OBJCOPY := /var/archlab-modules/riscv-gnu-toolchain/2026.03.13/bin/riscv64-unknown-elf-objcopy
-OBJDUMP := /var/archlab-modules/riscv-gnu-toolchain/2026.03.13/bin/riscv64-unknown-elf-objdump
-VIVADO  := /var/archlab-modules/amd/2025.2/Vivado/bin/vivado
-VPP     := /var/archlab-modules/amd/2025.2/Vitis/bin/v++
-RTLSIM  := /var/archlab-modules/verilator/5.046/bin/verilator
+GCC     ?= /opt/homebrew/bin/riscv64-unknown-elf-gcc
+GPP     ?= riscv64-unknown-elf-g++
+OBJCOPY ?= riscv64-unknown-elf-objcopy
+OBJDUMP ?= riscv64-unknown-elf-objdump
+VIVADO  ?= vivado
+VPP     ?= v++
+RTLSIM  ?= /opt/homebrew/bin/verilator
 
 TARGET := arty_a7
 # TARGET := cmod_a7
@@ -27,15 +27,16 @@ all: prog build
 
 build:
 	$(RTLSIM) --binary --trace --top-module top --Wno-WIDTHTRUNC --Wno-WIDTHEXPAND -o top *.v
-	gcc -O2 dispemu/dispemu.c -o build/dispemu -lcairo -lX11
-
+	gcc -O2 dispemu/dispemu.c -o build/dispemu \
+		$(shell pkg-config --cflags x11) -I$(shell pkg-config --variable=includedir cairo) \
+		$(shell pkg-config --libs cairo x11)
 prog:
 	mkdir -p build
-	$(GCC) -Os -march=rv32im -mabi=ilp32 -nostartfiles -Iapp -Tapp/link.ld -o build/main.elf app/crt0.s app/*.c *.c
+	$(GCC) -Os -Iapp -march=rv32im -mabi=ilp32 -nostartfiles -Iapp -Tapp/link.ld -o build/main.elf app/crt0.s app/*.c *.c
 	make initf
 
-imem_size =	$(shell grep -oP "\`define\s+IMEM_SIZE\s+\(\K[^)]*" config.vh | bc)
-dmem_size =	$(shell grep -oP "\`define\s+DMEM_SIZE\s+\(\K[^)]*" config.vh | bc)
+imem_size =	$(shell ggrep -oP "\`define\s+IMEM_SIZE\s+\(\K[^)]*" config.vh | bc)
+dmem_size =	$(shell ggrep -oP "\`define\s+DMEM_SIZE\s+\(\K[^)]*" config.vh | bc)
 initf:
 	$(OBJDUMP) -D build/main.elf > build/main.dump
 	$(OBJCOPY) -O binary --only-section=.text build/main.elf build/memi.bin.tmp; \
