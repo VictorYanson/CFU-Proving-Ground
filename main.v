@@ -43,7 +43,7 @@ module main (
     cpu cpu (
         .clk_i         (clk),         // input  wire
         .rst_i         (rst),         // input  wire
-        .stall_i       (0),           // input  wire
+        .stall_i       (cache_stall), // input  wire
         .ibus_araddr_o (imem_raddr),  // output wire [`IBUS_ADDR_WIDTH-1:0]
         .ibus_rdata_i  (imem_rdata),  // input  wire [`IBUS_DATA_WIDTH-1:0]
         .dbus_addr_o   (dbus_addr),   // output wire [`DBUS_ADDR_WIDTH-1:0]
@@ -53,18 +53,43 @@ module main (
         .dbus_rdata_i  (dbus_rdata)   // input  wire [`DBUS_DATA_WIDTH-1:0]
     );
 
+    wire cache_re;
+    assign cache_re = !dbus_we && dbus_addr[28];   // only reads to data memory
+    wire cache_stall;
+
+    dmap_cache cache (
+        .clk_i      (clk),
+        // cpu side
+        .re_i       (cache_re),
+        .we_i       (dbus_we && dbus_addr[28]),
+        .addr_i     (dbus_addr),
+        .wdata_i    (dbus_wdata),
+        .wstrb_i    (dbus_wstrb),
+        .rdata_o    (dmem_rdata),
+        .stall_o    (cache_stall),
+        // memory side
+        .mem_re_o   (dmem_re),
+        .mem_we_o   (dmem_we),
+        .mem_addr_o (dmem_addr),
+        .mem_wdata_o(dmem_wdata),
+        .mem_wstrb_o(dmem_wstrb),
+        .mem_rdata_i(dmem_mem_rdata)
+    );
+
     m_imem imem (
         .clk_i   (clk),         // input  wire
         .raddr_i (imem_raddr),  // input  wire [ADDR_WIDTH-1:0]
         .rdata_o (imem_rdata)   // output reg  [DATA_WIDTH-1:0]
     );
 
-    wire [31:0] dmem_addr  = dbus_addr;
-    wire [31:0] dmem_wdata = dbus_wdata;
-    wire  [3:0] dmem_wstrb = dbus_wstrb;
-    wire        dmem_re    = !dbus_we & (dbus_addr[28]);
-    wire        dmem_we    =  dbus_we & (dbus_addr[28]);
+    wire [31:0] dmem_addr;
+    wire [31:0] dmem_wdata;
+    wire [3:0]  dmem_wstrb;
+    wire        dmem_re;
+    wire        dmem_we;
     wire [31:0] dmem_rdata;
+    wire [31:0] dmem_mem_rdata;
+
     m_dmem dmem (
         .clk_i   (clk),         // input  wire
         .we_i    (dmem_we),     // input  wire
@@ -72,7 +97,7 @@ module main (
         .addr_i  (dmem_addr),   // input  wire [ADDR_WIDTH-1:0]
         .wdata_i (dmem_wdata),  // input  wire [DATA_WIDTH-1:0]
         .wstrb_i (dmem_wstrb),  // input  wire [STRB_WIDTH-1:0]
-        .rdata_o (dmem_rdata)   // output reg  [DATA_WIDTH-1:0]
+        .rdata_o (dmem_mem_rdata) // output reg  [DATA_WIDTH-1:0]
     );
 
     wire        vmem_we    = dbus_we & (dbus_addr[29]);
@@ -155,9 +180,112 @@ module m_dmem (
             if (wstrb_i[2]) dmem[valid_addr][23:16] <= wdata_i[23:16];
             if (wstrb_i[3]) dmem[valid_addr][31:24] <= wdata_i[31:24];
         end
-        if (re_i) rdata <= dmem[valid_addr];
+        if (re_i) begin
+            $display("RAM read addr=%08x data=%08x", addr_i, dmem[valid_addr]);
+            rdata <= dmem[valid_addr];
+        end
     end
     assign rdata_o = rdata;
+endmodule
+
+module dmap_cache (
+    input  wire        clk_i,
+    input  wire        re_i,
+    input  wire        we_i,
+    input  wire [31:0] addr_i,
+    input  wire [31:0] wdata_i,
+    input  wire  [3:0] wstrb_i,
+    output reg  [31:0] rdata_o,
+    output wire        stall_o,
+
+    output wire        mem_re_o,
+    output wire        mem_we_o,
+    output wire [31:0] mem_addr_o,
+    output wire [31:0] mem_wdata_o,
+    output wire [3:0]  mem_wstrb_o,
+    input  wire [31:0] mem_rdata_i
+);
+    reg [31:0] cache_data  [0:15];
+    reg [25:0] cache_tag   [0:15];
+    reg        cache_valid [0:15];
+
+    integer i;
+    initial begin
+        for (i=0;i<16;i=i+1) begin
+            cache_valid[i] = 0;
+        end
+    end
+
+    wire [3:0]  index  = addr_i[5:2];
+    wire [25:0] tag    = addr_i[31:6];
+    
+    localparam IDLE = 1'b0;
+    localparam WAIT = 1'b1;
+
+    reg state = IDLE;
+
+    reg [3:0]  miss_index;
+    reg [25:0] miss_tag;
+
+    wire hit = cache_valid[index] && (cache_tag[index] == tag);
+
+    assign mem_addr_o  = addr_i;
+    assign mem_wdata_o = wdata_i;
+    assign mem_wstrb_o = wstrb_i;
+
+    assign mem_we_o = we_i;
+    assign mem_re_o = (state == IDLE) && re_i && !hit;
+
+    always @(posedge clk_i) begin
+        case (state)
+
+        IDLE: begin
+            if (re_i) begin
+                if (hit) begin
+                    // Cache hit
+                    rdata_o <= cache_data[index];
+                end
+                else begin
+                    // Cache miss: remember where to fill next cycle
+                    miss_index <= index;
+                    miss_tag   <= tag;
+                    state      <= WAIT;
+                end
+            end
+
+            if (we_i) begin
+                if (hit) begin
+                    if (wstrb_i[0]) cache_data[index][7:0]   <= wdata_i[7:0];
+                    if (wstrb_i[1]) cache_data[index][15:8]  <= wdata_i[15:8];
+                    if (wstrb_i[2]) cache_data[index][23:16] <= wdata_i[23:16];
+                    if (wstrb_i[3]) cache_data[index][31:24] <= wdata_i[31:24];
+                end
+                else begin
+                    miss_index <= index;
+                    miss_tag   <= tag;
+                    state      <= WAIT;
+                end
+            end
+        end
+
+        WAIT: begin
+            $display("CACHE fill addr=%08x data=%08x",
+                {miss_tag, miss_index, 2'b00},
+                mem_rdata_i);
+            // RAM data has arrived
+            cache_data[miss_index]  <= mem_rdata_i;
+            cache_tag[miss_index]   <= miss_tag;
+            cache_valid[miss_index] <= 1;
+
+            rdata_o <= mem_rdata_i;
+
+            state <= IDLE;
+        end
+
+        endcase
+    end
+
+    assign stall_o = (state == WAIT);
 endmodule
 
 module perf_cntr (
