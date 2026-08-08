@@ -233,7 +233,7 @@ module dmap_cache (
     assign mem_wdata_o = wdata_i;
     assign mem_wstrb_o = wstrb_i;
 
-    assign mem_we_o = we_i;
+    assign mem_we_o = (state == IDLE) && we_i;
     assign mem_re_o = (state == IDLE) && re_i && !hit;
 
     always @(posedge clk_i) begin
@@ -259,11 +259,6 @@ module dmap_cache (
                     if (wstrb_i[1]) cache_data[index][15:8]  <= wdata_i[15:8];
                     if (wstrb_i[2]) cache_data[index][23:16] <= wdata_i[23:16];
                     if (wstrb_i[3]) cache_data[index][31:24] <= wdata_i[31:24];
-                end
-                else begin
-                    miss_index <= index;
-                    miss_tag   <= tag;
-                    state      <= WAIT;
                 end
             end
         end
