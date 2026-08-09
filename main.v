@@ -181,7 +181,6 @@ module m_dmem (
             if (wstrb_i[3]) dmem[valid_addr][31:24] <= wdata_i[31:24];
         end
         if (re_i) begin
-            $display("RAM read addr=%08x data=%08x", addr_i, dmem[valid_addr]);
             rdata <= dmem[valid_addr];
         end
     end
@@ -209,11 +208,16 @@ module dmap_cache (
     reg [25:0] cache_tag   [0:15];
     reg        cache_valid [0:15];
 
+    reg [63:0] cache_access_cnt;
+    reg [63:0] cache_hit_cnt;
+
     integer i;
     initial begin
         for (i=0;i<16;i=i+1) begin
             cache_valid[i] = 0;
         end
+        cache_access_cnt = 0;
+        cache_hit_cnt = 0;
     end
 
     wire [3:0]  index  = addr_i[5:2];
@@ -261,12 +265,14 @@ module dmap_cache (
                     if (wstrb_i[3]) cache_data[index][31:24] <= wdata_i[31:24];
                 end
             end
+
+            if (re_i || we_i) begin
+                cache_access_cnt <= cache_access_cnt + 1;
+                if (hit) cache_hit_cnt <= cache_hit_cnt + 1;
+            end
         end
 
         WAIT: begin
-            $display("CACHE fill addr=%08x data=%08x",
-                {miss_tag, miss_index, 2'b00},
-                mem_rdata_i);
             // RAM data has arrived
             cache_data[miss_index]  <= mem_rdata_i;
             cache_tag[miss_index]   <= miss_tag;

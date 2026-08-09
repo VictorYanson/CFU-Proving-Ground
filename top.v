@@ -26,10 +26,12 @@ module top;
 //==============================================================================
 // Dump
 //------------------------------------------------------------------------------
+/*
     initial begin
         $dumpfile("dump.vcd");
         $dumpvars(0, top);
     end
+*/
 
 //==============================================================================
 // Condition for simulation to end
@@ -52,6 +54,11 @@ module top;
         $write("===> minstret                               : %10d\n", minstret);
         $write("===> Total number of branch predictions     : %10d\n", br_pred_cntr);
         $write("===> Total number of branch mispredictions  : %10d\n", br_misp_cntr);
+        $write("===> Total number of cache hits             : %10d\n", m0.cache.cache_hit_cnt);
+        $write("===> Total number of cache accesses         : %10d\n", m0.cache.cache_access_cnt);
+        $write("===> Cache hit ratio                        : %6.2f%%\n",
+            (m0.cache.cache_access_cnt == 0) ? 0.0 :
+            100.0 * m0.cache.cache_hit_cnt / m0.cache.cache_access_cnt);
         $write("===> simulation finish!!\n");
         $write("\n");
     end
@@ -59,6 +66,7 @@ module top;
 //==============================================================================
 // Trace Dump
 //------------------------------------------------------------------------------
+/*
     integer i, j, fp;
     initial begin
         fp=$fopen("trace.txt","w");
@@ -79,10 +87,12 @@ module top;
             end
         end
     end
+*/
 
 //==============================================================================
 // Debug Dump
 //------------------------------------------------------------------------------
+/*
     reg r_rst = 0;
     always @(posedge clk) r_rst <= !m0.rst;
     always @(posedge clk) if (r_rst) begin
@@ -103,6 +113,7 @@ module top;
 
         $write("\n");
     end
+*/
 
     wire sda, scl, dc, res;
     main m0 (
