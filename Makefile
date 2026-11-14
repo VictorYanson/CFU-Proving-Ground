@@ -1,13 +1,13 @@
 # CFU Proving Ground since 2025-02    Copyright(c) 2025 Archlab. Science Tokyo
 # Released under the MIT license https://opensource.org/licenses/mit
 
-GCC     ?= /opt/homebrew/bin/riscv64-unknown-elf-gcc
-GPP     ?= riscv64-unknown-elf-g++
-OBJCOPY ?= riscv64-unknown-elf-objcopy
-OBJDUMP ?= riscv64-unknown-elf-objdump
-VIVADO  ?= vivado
+GCC     ?= /home/victor/riscv/rv32ima/bin/riscv32-unknown-elf-gcc
+GPP     ?= /home/victor/riscv/rv32ima/bin/riscv32-unknown-elf-g++
+OBJCOPY ?= /home/victor/riscv/rv32ima/bin/riscv32-unknown-elf-objcopy
+OBJDUMP ?= /home/victor/riscv/rv32ima/bin/riscv32-unknown-elf-objdump
+VIVADO  ?= /home/victor/bin/vivado
 VPP     ?= v++
-RTLSIM  ?= /opt/homebrew/bin/verilator
+RTLSIM  ?= /usr/bin/verilator
 
 TARGET := arty_a7
 # TARGET := cmod_a7
@@ -15,7 +15,7 @@ TARGET := arty_a7
 
 USE_HLS ?= 0
 
-PART_arty_a7  := xc7a35tcsg324-1
+PART_arty_a7  := xc7a100tcsg324-1
 PART_nexys_a7 := xc7a100tcsg324-1
 PART_cmod_a7  := xc7a35ticpg236-1L
 
@@ -35,8 +35,8 @@ prog:
 	$(GCC) -Os -Iapp -march=rv32im -mabi=ilp32 -nostartfiles -Iapp -Tapp/link.ld -o build/main.elf app/crt0.s app/*.c *.c
 	make initf
 
-imem_size =	$(shell ggrep -oP "\`define\s+IMEM_SIZE\s+\(\K[^)]*" config.vh | bc)
-dmem_size =	$(shell ggrep -oP "\`define\s+DMEM_SIZE\s+\(\K[^)]*" config.vh | bc)
+imem_size =	$(shell grep -oP "\`define\s+IMEM_SIZE\s+\(\K[^)]*" config.vh | bc)
+dmem_size =	$(shell grep -oP "\`define\s+DMEM_SIZE\s+\(\K[^)]*" config.vh | bc)
 initf:
 	$(OBJDUMP) -D build/main.elf > build/main.dump
 	$(OBJCOPY) -O binary --only-section=.text build/main.elf build/memi.bin.tmp; \

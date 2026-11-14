@@ -3,7 +3,7 @@
 
 set top_dir [pwd]
 set proj_name main
-set part_name xc7a35tcsg324-1
+set part_name xc7a100tcsg324-1
 set src_files [list $top_dir/proc.v $top_dir/cfu.v $top_dir/main.v]
 set nproc [exec nproc]
 

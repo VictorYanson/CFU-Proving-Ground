@@ -3,7 +3,7 @@ set port 3121
 
 open_hw_manager
 
-connect_hw_server -url $ip_addr:$port
+connect_hw_server -url localhost:3121
 current_hw_target
 open_hw_target
 
