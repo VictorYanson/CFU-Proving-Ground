@@ -5,7 +5,7 @@ module uart
 #(
     parameter   DBIT    = 8,
                 SB_TICK = 16,
-                FIFO_W  = 2
+                FIFO_W  = 4
 )
 (
 input   wire clk, reset,
@@ -26,7 +26,7 @@ fifo_buffer #(.B(DBIT), .W(FIFO_W)) fifo_tx_unit
 .wr(wr_uart), .w_data(w_data), .empty(tx_empty),
 .full(tx_full), .r_data(tx_fifo_out));
 
-uart_tx #() uart_tx_unit 
+uart_tx #(.DBIT(DBIT), .SB_TICK(SB_TICK)) uart_tx_unit 
 (.clk(clk), .reset(reset), .tx_start(tx_fifo_not_empty),
 .s_tick(tick), .din(tx_fifo_out),
 .tx_done_tick(tx_done_tick), .tx(tx));
@@ -206,7 +206,7 @@ always @(posedge clk, posedge reset)
         begin
             w_ptr_reg   <= 0;
             r_ptr_reg   <= 0;
-            full_reg    <= 1'b1;
+            full_reg    <= 1'b0;
             empty_reg   <= 1'b1;
         end
     else
