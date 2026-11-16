@@ -1,3 +1,5 @@
+`include "config.vh"
+
 module uart_transmitter
 #(
     parameter   DBIT    =   8,
@@ -85,7 +87,7 @@ begin
                             if (n_reg == 3'(DBIT - 1))
                                 state_next = stop;
                             else
-                                n_next  = n_reg+ 1;
+                                n_next  = n_reg + 1;
                         end
                     else
                         s_next = s_reg + 1;
@@ -94,7 +96,7 @@ begin
             begin
                 tx_next = 1'b1;
                 if (s_tick)
-                    if (s_reg == 4'(SB_TICK -1))
+                    if (s_reg == 4'(SB_TICK - 1))
                         begin
                             state_next      = idle;
                             tx_done_tick    = 1'b1; 
@@ -105,5 +107,32 @@ begin
 end
 
 assign tx = tx_reg;
+
+endmodule
+
+module baud_generator 
+(
+    input  wire clk,
+    input  wire reset,
+    output reg  tick
+);
+
+    localparam integer DIVISOR = ((`CLK_FREQ_MHZ * 1000000) + (`BAUD_RATE * 8)) / (`BAUD_RATE * 16);
+    localparam integer WIDTH   = (DIVISOR > 1) ? $clog2(DIVISOR) : 1;
+
+    reg [WIDTH-1:0] counter;
+
+    always @(posedge clk, posedge reset) begin
+        if (reset) begin
+            counter <= 0;
+            tick    <= 1'b0;
+        end else if (counter == 4'(DIVISOR - 1)) begin
+            counter <= 0;
+            tick    <= 1'b1;
+        end else begin
+            counter <= counter + 1'b1;
+            tick    <= 1'b0;
+        end
+    end
 
 endmodule
