@@ -1,16 +1,42 @@
 `include "config.vh"
 
+// only contains transmitter for now
 module uart
+#(
+    parameter   DBIT    = 8,
+                SB_TICK = 16,
+                FIFO_W  = 2
+)
 (
-
+input   wire clk, reset,
+input   wire [7:0] w_data,
+input   wire wr_uart,
+output  wire tx_full, tx
 );
 
-baud_generator generator();
-uart_transmitter transmitter();
+wire tick,      tx_done_tick;
+wire tx_empty,  tx_fifo_not_empty;
+wire [7:0] tx_fifo_out;
+
+baud_generator baud_gen_unit 
+(.clk(clk), .reset(reset), .tick(tick));
+
+fifo_buffer #(.B(DBIT), .W(FIFO_W)) fifo_tx_unit
+(.clk(clk), .reset(reset), .rd(tx_done_tick),
+.wr(wr_uart), .w_data(w_data), .empty(tx_empty),
+.full(tx_full), .r_data(tx_fifo_out));
+
+uart_tx #() uart_tx_unit 
+(.clk(clk), .reset(reset), .tx_start(tx_fifo_not_empty),
+.s_tick(tick), .din(tx_fifo_out),
+.tx_done_tick(tx_done_tick), .tx(tx));
+
+assign tx_fifo_not_empty = ~tx_empty;
 
 endmodule
 
-module uart_transmitter
+
+module uart_tx
 #(
     parameter   DBIT    =   8,
                 SB_TICK =   16
@@ -120,6 +146,7 @@ assign tx = tx_reg;
 
 endmodule
 
+
 module baud_generator 
 (
 input  wire clk,
@@ -136,7 +163,7 @@ always @(posedge clk, posedge reset) begin
     if (reset) begin
         counter <= 0;
         tick    <= 1'b0;
-    end else if (counter == DIVISOR - 1) begin
+    end else if (counter == WIDTH'(DIVISOR - 1)) begin
         counter <= 0;
         tick    <= 1'b1;
     end else begin
@@ -146,6 +173,7 @@ always @(posedge clk, posedge reset) begin
 end
 
 endmodule
+
 
 module fifo_buffer
 #(
@@ -198,7 +226,10 @@ begin
     full_next   = full_reg;
     empty_next  = empty_reg;
     case ({wr, rd})
-        // 2'b00: no op
+        2'b00:  
+            begin
+                // no op
+            end
         2'b01:  // read
             if (~empty_reg)
                 begin
