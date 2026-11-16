@@ -9,7 +9,7 @@ input   wire    tx_start,   s_tick,
 input   wire    [7:0] din,
 output  reg     tx_done_tick,
 output  wire    tx
-)
+);
 
 localparam [1:0]
 idle    = 2'b00,
@@ -21,7 +21,7 @@ reg [1:0]   state_reg,  state_next;
 reg [3:0]   s_reg,      s_next;
 reg [2:0]   n_reg,      n_next;
 reg [7:0]   b_reg,      b_next;
-reg         tx_reg,     tx_next ; 
+reg         tx_reg,     tx_next;
 
 always @(posedge clk, posedge reset)
     if (reset)
@@ -82,7 +82,7 @@ begin
                         begin
                             s_next  = 0;
                             b_next  = b_reg >> 1;
-                            if (n_reg == (DBIT - 1))
+                            if (n_reg == 3'(DBIT - 1))
                                 state_next = stop;
                             else
                                 n_next  = n_reg+ 1;
@@ -94,7 +94,7 @@ begin
             begin
                 tx_next = 1'b1;
                 if (s_tick)
-                    if (s_reg == (SB_TICK -1))
+                    if (s_reg == 4'(SB_TICK -1))
                         begin
                             state_next      = idle;
                             tx_done_tick    = 1'b1; 
