@@ -8,6 +8,7 @@
 #include "st7789.h"
 #include "perf.h"
 #include "util.h"
+#include "uart.h"
 
 void RandomChar() {
     // Define MMIO pointers for performance counters based on your memory map
@@ -23,6 +24,7 @@ void RandomChar() {
     while (count < 1000) {
         count++;
         char c = 'A' + rand() % 26;
+        uart_putc(c);   
         pg_lcd_draw_char(rand() % 240, rand() % 240, c, rand() & 0x7, 1);
         pg_lcd_set_pos(0, 14);
         pg_lcd_prints("steps :");

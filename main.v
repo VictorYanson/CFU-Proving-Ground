@@ -10,7 +10,8 @@ module main (
     output wire st7789_SDA,
     output wire st7789_SCL,
     output wire st7789_DC,
-    output wire st7789_RES
+    output wire st7789_RES,
+    output wire txd_o
 );
     reg rst_ni = 0; initial #15 rst_ni = 1;
     wire clk, locked;
@@ -36,9 +37,21 @@ module main (
     wire [`DBUS_STRB_WIDTH-1:0] dbus_wstrb;
     wire [`DBUS_DATA_WIDTH-1:0] dbus_rdata;
 
-    reg rdata_sel = 0;
-    always @(posedge clk) rdata_sel <= dbus_addr[30];
-    assign dbus_rdata = (rdata_sel) ? perf_rdata : dmem_rdata;
+    wire perf_sel = (dbus_addr[31:4] == 28'h4000000);
+    wire uart_data_sel = (dbus_addr == 32'h40000010);
+    wire uart_status_sel = (dbus_addr == 32'h40000014);
+    wire [31:0] uart_rdata;
+    wire tx_full;
+
+    reg perf_rdata_sel = 0;
+    reg uart_rdata_sel = 0;
+    always @(posedge clk) begin
+        perf_rdata_sel <= perf_sel;
+        uart_rdata_sel <= uart_status_sel;
+    end
+    assign uart_rdata = {31'b0, tx_full};
+    assign dbus_rdata = perf_rdata_sel ? perf_rdata :
+                        uart_rdata_sel ? uart_rdata : dmem_rdata;
 
     cpu cpu (
         .clk_i         (clk),         // input  wire
@@ -114,7 +127,7 @@ module main (
         .rdata_o (vmem_rdata_t)  // output wire [15:0]
     );
 
-    wire        perf_we    = dbus_we & (dbus_addr[30]);
+    wire        perf_we    = dbus_we & perf_sel;
     wire  [3:0] perf_addr  = dbus_addr[3:0];
     wire  [2:0] perf_wdata = dbus_wdata[2:0];
     wire [31:0] perf_rdata;
@@ -124,6 +137,15 @@ module main (
         .wdata_i (perf_wdata),  // input  wire [2:0]
         .w_en_i  (perf_we),     // input  wire
         .rdata_o (perf_rdata)   // output wire [31:0]
+    );
+
+    uart uart0 (
+        .clk     (clk),
+        .reset   (rst),
+        .w_data  (dbus_wdata[7:0]),
+        .wr_uart (dbus_we && uart_data_sel && dbus_wstrb[0]),
+        .tx_full (tx_full),
+        .tx      (txd_o)
     );
 
     wire [15:0] vmem_rdata = {{5{vmem_rdata_t[2]}}, {6{vmem_rdata_t[1]}}, {5{vmem_rdata_t[0]}}};

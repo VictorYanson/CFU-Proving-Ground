@@ -115,12 +115,13 @@ module top;
     end
 */
 
-    wire sda, scl, dc, res;
+    wire sda, scl, dc, res, txd_o;
     main m0 (
         .clk_i      (clk),
         .st7789_SDA (sda),
         .st7789_SCL (scl),
         .st7789_DC  (dc),
-        .st7789_RES (res)
+        .st7789_RES (res),
+        .txd_o      (txd_o)
     );
 endmodule
