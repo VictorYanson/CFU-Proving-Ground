@@ -37,21 +37,32 @@ module main (
     wire [`DBUS_STRB_WIDTH-1:0] dbus_wstrb;
     wire [`DBUS_DATA_WIDTH-1:0] dbus_rdata;
 
-    wire perf_sel = (dbus_addr[31:4] == 28'h4000000);
-    wire uart_data_sel = (dbus_addr == 32'h40000010);
+// 1. Combinational address decodes for the current address phase
+    wire perf_sel        = (dbus_addr[31:4] == 28'h4000000);
+    wire uart_data_sel   = (dbus_addr == 32'h40000010);
     wire uart_status_sel = (dbus_addr == 32'h40000014);
-    wire [31:0] uart_rdata;
     wire tx_full;
 
-    reg perf_rdata_sel = 0;
-    reg uart_rdata_sel = 0;
+    // 2. Register the select signals to match the CPU's load pipeline latency (1 cycle)
+    reg perf_rdata_sel   = 1'b0;
+    reg uart_rdata_sel   = 1'b0;
+
     always @(posedge clk) begin
-        perf_rdata_sel <= perf_sel;
-        uart_rdata_sel <= uart_status_sel;
+        if (rst) begin
+            perf_rdata_sel   <= 1'b0;
+            uart_rdata_sel   <= 1'b0;
+        end else begin
+            perf_rdata_sel   <= perf_sel;
+            uart_rdata_sel   <= uart_status_sel;
+        end
     end
-    assign uart_rdata = {31'b0, tx_full};
-    assign dbus_rdata = perf_rdata_sel ? perf_rdata :
-                        uart_rdata_sel ? uart_rdata : dmem_rdata;
+
+    wire [31:0] uart_rdata = {31'b0, tx_full};
+
+    // 3. Use the registered select signals for the read multiplexer
+    assign dbus_rdata = uart_rdata_sel ? uart_rdata :
+                        perf_rdata_sel ? perf_rdata : 
+                                         dmem_rdata;
 
     cpu cpu (
         .clk_i         (clk),         // input  wire

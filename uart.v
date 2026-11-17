@@ -234,7 +234,7 @@ begin
             if (~empty_reg)
                 begin
                     r_ptr_next  = r_ptr_succ;
-                    full_next   = 1'b1;
+                    full_next   = 1'b0;
                     if (r_ptr_succ == w_ptr_reg)
                         empty_next = 1'b1;
                 end
