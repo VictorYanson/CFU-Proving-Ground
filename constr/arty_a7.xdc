@@ -15,7 +15,6 @@ set_property -dict { PACKAGE_PIN V10 IOSTANDARD LVCMOS33 } [get_ports { st7789_S
 set_property -dict { PACKAGE_PIN V11 IOSTANDARD LVCMOS33 } [get_ports { st7789_SCL }]; # Pin 4
 
 ## USB-UART Interface
-set_property -dict { PACKAGE_PIN A9    IOSTANDARD LVCMOS33 } [get_ports { rxd_i }];
 set_property -dict { PACKAGE_PIN D10   IOSTANDARD LVCMOS33 } [get_ports { txd_o }];
 
 #####

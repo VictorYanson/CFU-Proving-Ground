@@ -120,7 +120,7 @@ begin
                         begin
                             s_next  = 0;
                             b_next  = b_reg >> 1;
-                            if (n_reg == 3'(DBIT - 1))
+                            if (n_reg == DBIT - 1)
                                 state_next = stop;
                             else
                                 n_next  = n_reg + 1;
@@ -132,7 +132,7 @@ begin
             begin
                 tx_next = 1'b1;
                 if (s_tick)
-                    if (s_reg == 4'(SB_TICK - 1))
+                    if (s_reg == SB_TICK - 1)
                         begin
                             state_next      = idle;
                             tx_done_tick    = 1'b1; 
@@ -154,7 +154,7 @@ input  wire reset,
 output reg  tick
 );
 
-localparam integer DIVISOR = ((`CLK_FREQ_MHZ * 1000000) + (`BAUD_RATE * 8)) / (`BAUD_RATE * 16);
+localparam integer DIVISOR = ((`CLK_FREQ_MHZ * 1_000_000) + (`BAUD_RATE * 8)) / (`BAUD_RATE * 16);
 localparam integer WIDTH   = (DIVISOR > 1) ? $clog2(DIVISOR) : 1;
 
 reg [WIDTH-1:0] counter;
@@ -163,7 +163,7 @@ always @(posedge clk, posedge reset) begin
     if (reset) begin
         counter <= 0;
         tick    <= 1'b0;
-    end else if (counter == WIDTH'(DIVISOR - 1)) begin
+    end else if (counter == DIVISOR - 1) begin
         counter <= 0;
         tick    <= 1'b1;
     end else begin

@@ -10,25 +10,32 @@
 #include "util.h"
 #include "uart.h"
 
+void uart_print(char[] str) {
+    i = 0;
+    while (str[i]!=0) {
+        uart_putc(str[i])
+        i++;
+    }
+}
+
 void RandomChar() {
     // Define MMIO pointers for performance counters based on your memory map
     volatile uint32_t *ctrl_reg   = (volatile uint32_t *) 0x40000000;
     
-    int count = 0;
+    char msg[] = "Hello World!\n";
     
     // START COUNTERS: write 1 to control register
     *ctrl_reg = 1;
     
-    // Run for a fixed number of steps so the benchmark can complete
-    while (count < 1000) {
-        uint32_t status = *(volatile uint32_t *)0x40000014;
+    int count = 0;
+    while (true) {
         count++;
         char c = 'A' + rand() % 26;
         uart_putc(c);   
         pg_lcd_draw_char(rand() % 240, rand() % 240, c, rand() & 0x7, 1);
         pg_lcd_set_pos(0, 14);
-        pg_lcd_prints("Status :");
-        pg_lcd_printd(status);
+        pg_lcd_prints("steps :");
+        pg_lcd_printd(count);
     }
 
     // STOP COUNTERS: write 2 to control register
